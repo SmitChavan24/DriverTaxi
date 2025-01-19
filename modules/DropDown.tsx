@@ -5,7 +5,7 @@ import paddingHelper from '../utils/paddingHelper';
 import {useState} from 'react';
 
 const Dropdown = ({
-  options = ['Male', 'Female', 'Other'],
+  options = ['Mumbai', 'Pune', 'Banglore'],
   placeholder = 'Search Your City Here',
 }: any) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -63,7 +63,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     width: '100%',
     marginBottom: '10%',
-    backgroundColor: '#FFFFFF',
+    // position: 'absolute',
+    backgroundColor: colors.white,
+    // backgroundColor: 'red',
   },
 
   container: {
@@ -81,7 +83,7 @@ const styles = StyleSheet.create({
     // borderWidth: 1,
     // borderColor: '#e0e0e0',
     borderRadius: 8,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     maxHeight: 150,
   },
   dropdownItem: {
