@@ -19,6 +19,9 @@ import StartAuth from './screens/Auth/StartAuth';
 import UserDetailsScreen from './screens/Auth/UserDetailsScreen';
 import CompleteAuth from './screens/Auth/CompleteAuth';
 import UploadDocs from './screens/Auth/UploadDocs';
+import Submitted from './screens/Auth/Submitted';
+import LocationAccess from './screens/Auth/LocationAccess';
+import DashBoard from './screens/Home/DashBoard';
 
 Mapbox.setAccessToken(
   'pk.eyJ1IjoibWFudml0aDUwNyIsImEiOiJjbHk4YTl1ejEwaDg2MnFxcGN6dnBpYmxjIn0.MYmf_2NaYmcEnQHhQWjhFA',
@@ -68,6 +71,11 @@ const App = () => {
           name="CompleteAuth"
           component={CompleteAuth}></Stack.Screen>
         <Stack.Screen name="UploadDocs" component={UploadDocs}></Stack.Screen>
+        <Stack.Screen name="Submitted" component={Submitted}></Stack.Screen>
+        <Stack.Screen
+          name="LocationAcess"
+          component={LocationAccess}></Stack.Screen>
+        <Stack.Screen name="DashBoard" component={DashBoard}></Stack.Screen>
       </Stack.Navigator>
       <Toast />
     </NavigationContainer>

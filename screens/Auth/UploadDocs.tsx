@@ -251,7 +251,7 @@ const UploadDocs = (props: any) => {
         </View>
         <YellowButton
           title="Next"
-          onPress={() => props.navigation.navigate('CompleteAuth')}
+          onPress={() => props.navigation.navigate('Submitted')}
         />
       </View>
     </View>
