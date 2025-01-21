@@ -11,30 +11,31 @@ import globalColors from '../../utils/globalColors';
 import AntDesign from 'react-native-vector-icons/AntDesign';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Entypo from 'react-native-vector-icons/Entypo';
+import colors from '../../utils/globalColors';
 
 const {width} = Dimensions.get('window');
 
 const NavigationBackComponent = (props: any) => {
   return (
     <View style={[styles.container, props.containerStyle]}>
-      <View style={{flexDirection: 'row', width: '90%', alignItems: 'center'}}>
-        <TouchableOpacity
-          style={[
-            {flexDirection: 'row', alignItems: 'center'},
-            props.innerContainerStyle,
-          ]}
-          onPress={() => props?.onPress()}>
-          <Icon
-            name="arrowleft"
-            color={props.color ? props.color : 'black'}
-            size={40}
-            style={{marginTop: 3}}
-          />
-          <Text numberOfLines={2} style={[styles.text, props.style]}>
-            {props.name}
-          </Text>
-        </TouchableOpacity>
-      </View>
+      {/* <View style={{flexDirection: 'row', width: '90%', alignItems: 'center'}}> */}
+      <TouchableOpacity
+        style={[
+          {flexDirection: 'row', alignItems: 'center'},
+          props.innerContainerStyle,
+        ]}
+        onPress={() => props?.onPress()}>
+        <Icon
+          name="arrowleft"
+          color={props.color ? props.color : 'black'}
+          size={40}
+          style={{marginTop: 3}}
+        />
+        <Text numberOfLines={1} style={[styles.text, props.style]}>
+          {props.name}
+        </Text>
+      </TouchableOpacity>
+      {/* </View> */}
 
       {props.bbpsLogo && (
         <View
@@ -137,11 +138,13 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   text: {
-    fontFamily: globalColors.fontSemiBold,
+    fontFamily: colors.fontSemiBold,
     fontSize: 20,
-    color: 'black',
-    marginLeft: '5%',
-    width: '82%',
+    color: '#0A0A0A',
+    alignSelf: 'center',
+    verticalAlign: 'middle',
+    marginLeft: (colors.width * 25) / 100,
+    // width: '82%',
   },
 });
 

@@ -22,6 +22,7 @@ import UploadDocs from './screens/Auth/UploadDocs';
 import Submitted from './screens/Auth/Submitted';
 import LocationAccess from './screens/Auth/LocationAccess';
 import DashBoard from './screens/Home/DashBoard';
+import CollectCash from './screens/Home/CollectCash';
 
 Mapbox.setAccessToken(
   'pk.eyJ1IjoibWFudml0aDUwNyIsImEiOiJjbHk4YTl1ejEwaDg2MnFxcGN6dnBpYmxjIn0.MYmf_2NaYmcEnQHhQWjhFA',
@@ -76,6 +77,7 @@ const App = () => {
           name="LocationAcess"
           component={LocationAccess}></Stack.Screen>
         <Stack.Screen name="DashBoard" component={DashBoard}></Stack.Screen>
+        <Stack.Screen name="CollectCash" component={CollectCash}></Stack.Screen>
       </Stack.Navigator>
       <Toast />
     </NavigationContainer>
