@@ -25,7 +25,7 @@ const CollectCash = (props: any) => {
 
   const handleSheetChanges = useCallback((index: number) => {
     console.log('handleSheetChanges', index);
-    // console.log(initialLocation, 'it');
+    // console.log(initialLocation, 'i');
   }, []);
   return (
     <GestureHandlerRootView style={styles.container}>
