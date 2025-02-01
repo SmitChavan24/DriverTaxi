@@ -16,15 +16,22 @@ import Icon from 'react-native-vector-icons/Entypo';
 import Icon2 from 'react-native-vector-icons/AntDesign';
 import NavigationBackComponent from '../../components/NavigationBackComponent';
 import colors from '../../utils/globalColors';
+import {API_URL, DEV_URL} from '@env';
 import Contact from '../../assets/images/uploadf.png';
 import Contact2 from '../../assets/images/prof.png';
 import DocumentPicker from 'react-native-document-picker';
 import YellowButton from '../../components/YellowButton';
 import paddingHelper from '../../utils/paddingHelper';
 import Dropdown from '../../modules/DropDown';
+import {showToast} from '../../modules/Toast';
+import axios from 'axios';
 
 const UploadDocs = (props: any) => {
-  const [selectedGender, setSelectedGender] = useState('Male');
+  const [files, setFiles] = useState([]);
+  const [fileError, setFileError] = useState('');
+  const [showPopup, setShowPopup] = useState(false);
+  const [popupDetails, setPopupDetails] = useState({imageSrc: '', text: ''});
+
   const [auth, setAuth] = useState([
     {step: 'Profile picture'},
     {step: 'Bank Account Details'},
@@ -37,6 +44,22 @@ const UploadDocs = (props: any) => {
     {term: 'Upload PDF / JPEG / PNG'},
   ];
   const [pickedFile, setPickedFile] = useState(null);
+
+  const getMaxFiles = title => {
+    switch (title) {
+      case 'Profile Picture':
+      case 'Bank Account Details':
+        return 1;
+      case 'Driving License':
+        return 2;
+      case 'Taxi Details':
+        return 3;
+      default:
+        return 1; // Default case
+    }
+  };
+
+  const maxFiles = getMaxFiles(auth);
 
   const pickDocument = async () => {
     const FILE_MAX_SIZE = 2 * 1024 * 1024; // 2 MB
@@ -107,6 +130,127 @@ const UploadDocs = (props: any) => {
     setPickedFile(prevFiles =>
       prevFiles.filter((_, index) => index !== indexToRemove),
     );
+  };
+
+  const performApiCall = async (title, files, driverId) => {
+    console.log(`Perform API call with ${files.length} files`);
+
+    // Check if the number of uploaded files matches the required number
+    if (files.length < maxFiles) {
+      setFileError(`You must upload ${maxFiles} file(s) for ${title}.`);
+      return {status: 404};
+    }
+
+    try {
+      const formData = new FormData();
+      let apiEndpoint;
+
+      switch (title) {
+        case 'Profile Picture':
+          apiEndpoint = '/api/drivers/upload-profile';
+          formData.append('profile_pic', files[0]);
+          formData.append('driverId', driverId);
+          setPopupDetails({
+            imageSrc: '/driver/profilePopup.PNG',
+            text: "Great job! Your profile is complete. Now, let's move on to secure your payments by adding your bank details.",
+          });
+          break;
+        case 'Bank Account Details':
+          apiEndpoint = '/api/drivers/upload-bank-details';
+          formData.append('bank-document', files[0]);
+          formData.append('driverId', driverId);
+          setPopupDetails({
+            imageSrc: '/driver/bankPopup.PNG',
+            text: "Awesome! Your bank details are all set. Next, let's make sure we have your driving details to keep you on the road safely.",
+          });
+          break;
+        case 'Driving License':
+          apiEndpoint = '/api/drivers/upload-driving-license';
+          formData.append('license_front', files[0]);
+          formData.append('license_back', files[1]);
+          formData.append('driverId', driverId);
+          setPopupDetails({
+            imageSrc: '/driver/drivingLicensePopup.PNG',
+            text: "Well done! Your driving details are updated. Finally, let's add your taxi information to complete your profile.",
+          });
+          break;
+        case 'Taxi Details':
+          apiEndpoint = '/api/drivers/upload-taxi-images';
+          formData.append('photo_front', files[0]);
+          formData.append('photo_back', files[1]);
+          formData.append('photo_inside', files[2]);
+          formData.append('driverId', driverId);
+          break;
+        default:
+          throw new Error('Invalid upload type');
+      }
+
+      const response = await axios.put(`${API_URL}${apiEndpoint}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      if (response.status === 200) {
+        showToast('Uploaded successfully');
+        setShowPopup(true);
+        setTimeout(() => {
+          setShowPopup(false);
+        }, 3000);
+        setFiles([]);
+      }
+      console.log(
+        `Returning with ${response.status} status & data`,
+        response.data,
+      );
+
+      return {status: response.status, data: response.data};
+    } catch (error) {
+      setFileError('Uploading failed, try again...');
+      console.error(`Error uploading ${title}:`, error);
+      showToast(`Error uploading ${title}: ${error.message}`);
+      return {
+        status: error.response ? error.response.status : 500,
+        error: error.message,
+      };
+    }
+  };
+  // const handleFileChange = (e) => {
+  //   const selectedFiles = Array.from(e.target.files);
+  //   const validFiles = [];
+  //   let hasError = false;
+
+  //   selectedFiles.forEach((file) => {
+  //     // Check for file size
+  //     if (file.size > MAX_FILE_SIZE) {
+  //       setFileError(`File "${file.name}" exceeds the 10MB size limit.`);
+  //       hasError = true;
+  //     }
+  //     // Check for file type
+  //     else if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+  //       setFileError(
+  //         `File "${file.name}" is not a valid type. Only PDF, JPEG, and PNG files are allowed.`
+  //       );
+  //       hasError = true;
+  //     } else {
+  //       validFiles.push(file);
+  //     }
+  //   });
+
+  //   if (!hasError) {
+  //     setFileError("");
+  //   }
+
+  //   setFiles((prevFiles) => {
+  //     const newFiles = [...prevFiles, ...validFiles].slice(0, maxFiles);
+  //     return newFiles;
+  //   });
+  // };
+  const handleSubmit = async () => {
+    const {status, data} = await performApiCall(title, files, driverId);
+    if (status === 200) {
+      // onButtonClick(status, data);
+    }
   };
   return (
     <View style={[styles.container]}>

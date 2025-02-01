@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import React, {useEffect, useState} from 'react';
 import Icon from 'react-native-vector-icons/AntDesign';
+import {API_URL, DEV_URL} from '@env';
 import Signup from '../../assets/images/LoginLock.png';
 import Contact from '../../assets/images/contact.png';
 import NavigationBackComponent from '../../components/NavigationBackComponent';
@@ -19,20 +20,17 @@ import colors from '../../utils/globalColors';
 import Icon1 from 'react-native-vector-icons/MaterialIcons';
 import YellowButton from '../../components/YellowButton';
 import paddingHelper from '../../utils/paddingHelper';
-import {API_URL, DEV_URL} from '@env';
 import useAuth from '../../utils/useAuth';
 import axios from 'axios';
 import {showToast} from '../../modules/Toast';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const LoginScreen = (props: any) => {
-  const RegEmail = props.route.params?.email;
-  const RegPass = props.route.params?.password;
-
-  const [data, setdata] = useState({email: '', password: ''});
+const PhoneVerify = (props: any) => {
+  const RegEmail = props.route.params.user.id;
+  console.log(RegEmail, 'draiiai');
+  const [phone, setPhone] = useState('');
   const [isChecked, setIsChecked] = useState(false);
   const [countdown, setCountdown] = useState(0);
-  const [customerId, setCustomerId] = useState('');
   const [error, setError] = useState('');
   const {user, signUp, logIn, signInWithOAuth} = useAuth();
   const [watch, setWatch] = useState(true);
@@ -40,109 +38,37 @@ const LoginScreen = (props: any) => {
   useEffect(() => {
     const GetLocal = async () => {
       const userData = await AsyncStorage.getItem('auth-token');
-      console.log(userData);
+
+      console.log(userData, 'session');
+      // setCustomerId(userData);
     };
     GetLocal();
-
-    const HandleSignUp = async () => {
-      console.log(RegEmail, RegPass);
-      const response = await logIn(RegEmail, RegPass);
-
-      if (response?.data?.user?.id) {
-        try {
-          const endpoint = `${API_URL}/api/drivers/driver-profile`;
-          const idField = 'driver_id';
-
-          const payload = {
-            [idField]: response.data.user.id,
-            email: RegEmail,
-            password: RegEmail,
-          };
-
-          const responsee = await axios.post(endpoint, payload);
-          console.log(`Created ${responsee ? 'driver' : 'customer'} profile`);
-          props.navigation.navigate('PhoneVerify', response.data);
-        } catch (error) {
-          // console.error("Error creating user profile:", error);
-          showToast('Failed to create user profile');
-        }
-      }
-    };
-    if (RegEmail && RegPass) {
-      HandleSignUp();
-    }
     // const parseUserData = JSON.parse(userData);
     // const customer_id = parseUserData.user.id;
     // setCustomerId(customer_id);
   }, []);
-  const handleSubmit = async () => {
-    // props.navigation.navigate('PhoneVerify');
-    if (!isChecked) {
-      showToast('Please Agree to Terms & Conditions');
-      return;
-    }
 
-    if (!data.email || !data.password) {
-      showToast('Please fill in all fields');
-      return;
-    }
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
-      showToast('Please enter a valid email address');
-      return;
-    }
-
-    if (data.password.length < 6) {
-      showToast('Password must be at least 6 characters');
-      return;
-    }
-
-    // const loadingToast = toast.loading(
-    //   `${isSignUp ? "Creating your account..." : "Logging you in...."}`,
-    //   { id: "loading-toast" }
-    // );
-
-    try {
-      const response = await logIn(data.email, data.password);
-
-      if (response.error) {
-        showToast(response.error.message);
-      } else {
-        showToast('Sign Up successful', 'success');
-        // await handleUserCreation(response.data.user.id);
-        props.navigation.navigate('DashBoard');
-      }
-
-      // toast.success(`${isSignUp ? 'Sign Up' : 'Log In'} successful!`);
-
-      // toast.dismiss(loadingToast);
-    } catch (error) {
-      // toast.dismiss(loadingToast);
-      // console.log("5"+error);
-      showToast(`Error: ${error.message}`);
-    } finally {
-      // setLoading(false);
-    }
-  };
   const handleSendOtp = async () => {
     setError(''); // Clear previous error before new request
 
-    // if (phoneNumber.length !== 10) {
-    //   setError("Please enter a valid 10-digit phone number");
-    //   return;
-    // }
+    if (phone.length !== 10) {
+      showToast('Please enter a valid 10-digit phone number');
+      return;
+    }
+    // props.navigation.navigate('VerifyScreen');
 
     try {
       const response = await axios.post(`${API_URL}/api/auth/send-otp`, {
-        userId: customerId,
-        userType: 'Customer',
+        userId: RegEmail,
+        userType: 'Driver',
       });
-      console.log(response);
+      console.log(response.data.otp);
       if (response.status === 200) {
         // setOtpSent(true);
         // setIsOtpValid(true); // Mark OTP as valid
         setCountdown(60); // Start the countdown
         showToast('Successfully sent OTP to your email!');
+        props.navigation.navigate('OtpScreen', {data: response.data, phone});
       } else {
         showToast(`Failed to send OTP: ${response.data.error}`);
       }
@@ -151,15 +77,13 @@ const LoginScreen = (props: any) => {
       showToast('An error occurred while sending OTP');
     }
   };
-  const onChange = (name: any, text: any) => {
+
+  const onChange = (text: any) => {
     // if (name === 'password' && !watch) {
     //   console.log('2');
     //   setWatch(true);
     // }
-    setdata({
-      ...data,
-      [name]: text,
-    });
+    setPhone(text);
   };
   return (
     <View style={[styles.container]}>
@@ -168,58 +92,22 @@ const LoginScreen = (props: any) => {
       <NavigationBackComponent onPress={() => props.navigation.goBack()} />
       <View style={{width: '80%', alignSelf: 'center'}}>
         <ImageBackground source={Signup} style={styles.backgroundImage} />
-        <Text style={styles.textt}>Login to your Account </Text>
+        <Text style={styles.textt}>Let's Sign In </Text>
+
         <View style={styles.inputContainer}>
-          {/* <Image source={Contact} style={{marginRight: 10}}></Image> */}
-          <Icon1 name="person" color={'#9D9393'} size={25} />
-          <TextInput
-            style={styles.textInput}
-            maxLength={50}
-            value={RegEmail ? RegEmail : data.email}
-            placeholder="Type your email here"
-            placeholderTextColor="#9D9393"
-            cursorColor="black"
-            onChangeText={text => onChange('email', text)}
-          />
-        </View>
-        <View style={styles.inputContainer}>
-          {/* <Image source={Contact} style={{marginRight: 10}}></Image> */}
-          <Icon1
-            name="key"
-            color={'#9D9393'}
-            size={25}
-            onPress={() => console.log('first')}
-          />
-          <TextInput
-            style={styles.textInput}
-            maxLength={20}
-            value={data.password}
-            secureTextEntry={watch}
-            placeholder="Type your password here"
-            placeholderTextColor="#9D9393"
-            cursorColor="black"
-            // keyboardType="phone-pad"
-            onChangeText={text => onChange('password', text)}
-          />
-          <Icon1
-            name="remove-red-eye"
-            color={'#9D9393'}
-            size={25}
-            onPress={() => setWatch(!watch)}
-          />
-        </View>
-        {/* <View style={styles.inputContainer}>
           <Image source={Contact} style={{marginRight: 10}}></Image>
+
           <TextInput
             keyboardType="numeric"
             style={styles.textInput}
             maxLength={10}
             placeholder="Type your phone number"
             placeholderTextColor="#9D9393"
-            cursorColor="transparent"
+            cursorColor="black"
+            onChangeText={text => onChange(text)}
             // keyboardType="phone-pad"
           />
-        </View> */}
+        </View>
         <TouchableOpacity
           style={{
             flexDirection: 'row',
@@ -231,8 +119,8 @@ const LoginScreen = (props: any) => {
           <Icon name="checkcircleo" color={colors.blue} size={15} />
           <Text style={styles.text}>Remember Me</Text>
         </TouchableOpacity>
-        <YellowButton title="Sign In" onPress={handleSubmit} />
-        <Text style={styles.textf}>
+        <YellowButton title="Sign In" onPress={handleSendOtp} />
+        {/* <Text style={styles.textf}>
           Don’t have an account?
           <Text
             style={{
@@ -244,13 +132,13 @@ const LoginScreen = (props: any) => {
             onPress={() => console.log('first')}>
             {' Sign up'}
           </Text>
-        </Text>
+        </Text> */}
       </View>
     </View>
   );
 };
 
-export default LoginScreen;
+export default PhoneVerify;
 
 const styles = StyleSheet.create({
   container: {

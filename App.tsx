@@ -23,6 +23,7 @@ import Submitted from './screens/Auth/Submitted';
 import LocationAccess from './screens/Auth/LocationAccess';
 import DashBoard from './screens/Home/DashBoard';
 import CollectCash from './screens/Home/CollectCash';
+import PhoneVerify from './screens/Auth/PhoneVerify';
 
 Mapbox.setAccessToken(
   'pk.eyJ1IjoibWFudml0aDUwNyIsImEiOiJjbHk4YTl1ejEwaDg2MnFxcGN6dnBpYmxjIn0.MYmf_2NaYmcEnQHhQWjhFA',
@@ -63,6 +64,7 @@ const App = () => {
           name="SignUpScreen"
           component={SignUpScreen}></Stack.Screen>
         <Stack.Screen name="LoginScreen" component={LoginScreen}></Stack.Screen>
+        <Stack.Screen name="PhoneVerify" component={PhoneVerify}></Stack.Screen>
         <Stack.Screen name="OtpScreen" component={OtpScreen}></Stack.Screen>
         <Stack.Screen name="StartAuth" component={StartAuth}></Stack.Screen>
         <Stack.Screen

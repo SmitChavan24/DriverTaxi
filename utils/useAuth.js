@@ -10,7 +10,7 @@ const useAuth = () => {
     // Utility to store the token in AsyncStorage and cookies
     const storeToken = (token) => {
         if (token) {
-            AsyncStorage.setItem("auth-token", token);
+            AsyncStorage.setItem("auth-token", JSON.stringify(token));
             // document.cookie = `auth-token=${token}; path=/; Secure; SameSite=Strict`;
         }
     };
@@ -28,7 +28,7 @@ const useAuth = () => {
             if (error) throw error;
 
             if (data.session) {
-                storeToken(data.session.access_token);
+                storeToken(data.session);
                 setUser(data.session.user);
             } else {
                 setUser(null);
@@ -44,7 +44,7 @@ const useAuth = () => {
     useEffect(() => {
         const { data: authListener } = supabase?.auth?.onAuthStateChange((event, session) => {
             setUser(session?.user ?? null);
-            if (session?.access_token) storeToken(session.access_token);
+            if (session?.access_token) storeToken(session);
         });
 
         fetchSession();
@@ -65,7 +65,7 @@ const useAuth = () => {
 
             if (response?.session?.access_token) {
 
-                AsyncStorage.setItem("auth-token", response.session.access_token);
+                storeToken(response.session);
                 // document.cookie = `auth-token=${response.session.access_token}; path=/;`;
             }
             return { response };
@@ -89,7 +89,7 @@ const useAuth = () => {
             if (error) throw error;
 
             if (data.session?.access_token) {
-                storeToken(data.session.access_token);
+                storeToken(data.session);
             }
 
             return { data };
@@ -129,7 +129,7 @@ const useAuth = () => {
             if (error) throw error;
 
             if (data.session?.access_token) {
-                storeToken(data.session.access_token);
+                storeToken(data.session);
             }
 
             return { data };

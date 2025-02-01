@@ -30,7 +30,7 @@ const HomeScreen = (props: any) => {
       </Text>
       <TouchableOpacity
         style={styles.button}
-        onPress={() => props.navigation.navigate('SignUpScreen')}>
+        onPress={() => props.navigation.navigate('DashBoard')}>
         <View
           style={{
             flexDirection: 'row',

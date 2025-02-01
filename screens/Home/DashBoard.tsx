@@ -7,10 +7,11 @@ import {
   Image,
   View,
 } from 'react-native';
-import React, {useCallback, useMemo, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import paddingHelper from '../../utils/paddingHelper';
 import Switch from 'react-native-switch-toggles';
 import Mapbox from '@rnmapbox/maps';
+import {API_URL, DEV_URL} from '@env';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import BottomSheet, {BottomSheetView} from '@gorhom/bottom-sheet';
 import colors from '../../utils/globalColors';
@@ -24,18 +25,172 @@ import FontAwesome6 from 'react-native-vector-icons/FontAwesome6';
 import AntDesign from 'react-native-vector-icons/AntDesign';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import RideRequests from '../../components/RideRequests';
+import axios from 'axios';
+import {showToast} from '../../modules/Toast';
+import getDistanceAndETA from '../../utils/distanceCalculation';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const DashBoard = (props: any) => {
   const [initialLocation, setInitialLocation] = useState('');
   const [destinationLocation, setDestinationLocation] = useState('');
   const [route, setRoute] = useState(null);
+  const [toggle, setToggle] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [driverId, setDriverId] = useState('');
+  const [rideRequests, setRideRequests] = useState([]);
+  const [updatedRequests, setUpdatedRequests] = useState([]);
+  const [customerData, setCustomerData] = useState([]);
+  const [dailyFares, setDailyFares] = useState({});
+  const [prebookings, setPrebookings] = useState({});
+  const [showPrebookings, setShowPrebookings] = useState(false);
   const snapPoints = useMemo(() => ['17%', '50%']);
-  const [time, settime] = useState(true);
+  const [time, settime] = useState(false);
+  const inputs = useRef([]);
   const bottomSheetRef = useRef<BottomSheet>(null);
   const handleSheetChanges = useCallback((index: number) => {
     console.log('handleSheetChanges', index);
     // console.log(initialLocation, 'it');
   }, []);
+
+  useEffect(() => {
+    if (rideRequests?.length) {
+      const updatedDetails = rideRequests.map(item => {
+        const response = getDistanceAndETA(
+          item.source_lat,
+          item.source_lng,
+          item.destination_lat,
+          item.destination_lng,
+        );
+
+        return {
+          ...item,
+          distance: response.distance,
+          duration: response.eta,
+        };
+      });
+      console.log(updatedDetails, 'updated');
+      setUpdatedRequests(updatedDetails);
+    }
+  }, [rideRequests]);
+
+  const handleDeclineRequest = requestId => {
+    setUpdatedRequests(prevRequests =>
+      prevRequests.filter(request => request.trip_id !== requestId),
+    );
+  };
+
+  const handleFindRide = async () => {
+    if (!toggle) {
+      showToast('Switch back to Online!');
+      return;
+    }
+    setLoading(true);
+    try {
+      const uniqueId = Date.now();
+
+      // First, revalidate the tag
+      const res = await axios.get(`${API_URL}api/revalidate`, {
+        params: {tag: 'ready-trips'},
+      });
+      // console.log(API_URL, 'whta ', res);
+      let driverId = await AsyncStorage.getItem('auth-token');
+      driverId = JSON.parse(driverId);
+      driverId = driverId?.user?.id;
+      setDriverId(driverId);
+      console.log(driverId, 'driver_id', uniqueId);
+      // Then, fetch the data
+      const response = await axios.get(`${API_URL}/api/trips/ready-trips`, {
+        params: {uniqueId, driverId},
+        headers: {
+          'Cache-Control':
+            'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+          Pragma: 'no-cache',
+        },
+      });
+
+      const data = response.data;
+      console.log('data ', data);
+
+      if (Array.isArray(data)) {
+        setRideRequests(data);
+      } else {
+        console.error('Error: Fetched data is not an array', data);
+        setRideRequests([]);
+      }
+    } catch (error) {
+      console.error('Error fetching ready trips:', error);
+      setRideRequests([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAccept = async trip => {
+    setLoading(true);
+
+    console.log('request ', request);
+    try {
+      const response = await axios.put(`${API_URL}/api/trips/accept-trip`, {
+        trip_id: trip,
+        driver_id: driverId,
+      });
+      if (response.status === 200) {
+      } else {
+        const res = await axios.post(`${API_URL}/api/trips/trip`, {
+          trip,
+        });
+        fetchDriverDetails(trip);
+        throw new Error('Failed to accept the trip');
+      }
+    } catch (error) {
+      showToast(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchDriverDetails = async tripId => {
+    try {
+      const response = await axios.post(
+        `${API_URL}/api/customers/driver-details`,
+        {
+          trip_id: tripId,
+          isDriver: false, // Driver specific
+        },
+      );
+
+      setCustomerData(response.data);
+      console.log(customerData);
+    } catch (error) {
+      console.error('Failed to fetch driver details:', error);
+    }
+  };
+
+  const validateOTP = async otpString => {
+    console.log('Entered OTP: ', otpString.trim());
+    console.log(tripId);
+    setLoading(true);
+
+    try {
+      console.log('Calling verify otp');
+      const response = await axios.post(`${API_URL}/api/trips/validate-otp`, {
+        trip_id: tripId,
+        otp: otpString,
+      });
+
+      if (response.data.success) {
+        showToast('OTP VERIFIED');
+      }
+    } catch (error) {
+      showToast(error.response?.data?.error || 'Failed to validate OTP');
+      // Clear OTP inputs on error
+      setOtp(['', '', '', '']);
+      inputs.current[0].focus();
+    } finally {
+      setLoading(false);
+    }
+  };
   return (
     <GestureHandlerRootView style={[styles.container]}>
       <StatusBar hidden={true} />
@@ -110,8 +265,8 @@ const DashBoard = (props: any) => {
           </TouchableOpacity>
           <Switch
             size={30}
-            value={true}
-            onChange={value => console.log(value)}
+            value={toggle}
+            onChange={value => setToggle(value)}
             activeTrackColor={'#D9D9D9'}
             activeThumbColor={colors.primary}
             renderOffIndicator={() => (
@@ -222,8 +377,8 @@ const DashBoard = (props: any) => {
           color={'#777777'}
           style={{alignSelf: 'center'}}
         />
-        {time && (
-          <View style={{marginHorizontal: '4%'}}>
+        {!time && (
+          <View style={{marginHorizontal: '6%'}}>
             <Text
               style={{
                 alignSelf: 'center',
@@ -251,7 +406,7 @@ const DashBoard = (props: any) => {
           </View>
         )}
       </View>
-      {!time && (
+      {time && (
         <View>
           <Text
             style={{
@@ -284,7 +439,10 @@ const DashBoard = (props: any) => {
         index={1}
         snapPoints={snapPoints}
         style={[
-          {backgroundColor: colors.white, borderRadius: 20},
+          {
+            backgroundColor: colors.white,
+            borderRadius: 20,
+          },
           shadowProp(3),
         ]}
         // handleComponent={() => (
@@ -308,263 +466,20 @@ const DashBoard = (props: any) => {
         ]}
         onChange={handleSheetChanges}>
         <BottomSheetView style={{padding: 0}}>
-          {!time ? (
+          <View style={{}}>
+            <RideRequests
+              updatedRequests={updatedRequests}
+              handleAccept={handleAccept}
+              handleDeclineRequest={handleDeclineRequest}
+            />
+
             <YellowButton
               title="Find Ride"
               hideIcon={false}
-              addStyle={{marginHorizontal: '10%'}}
-              onPress={() => props.navigation.navigate('LocationAcess')}
+              addStyle={{marginHorizontal: '10%', marginBottom: '10%'}}
+              onPress={handleFindRide}
             />
-          ) : (
-            <View>
-              <View
-                style={{
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                  width: '90%',
-                  alignItems: 'center',
-                  alignSelf: 'center',
-                  marginBottom: '3%',
-                }}>
-                <Text
-                  style={{
-                    color: '#0A0A0A',
-                    fontFamily: colors.fontSemiBold,
-                    fontSize: 18,
-                  }}>
-                  Ride Request
-                </Text>
-                <Text
-                  style={{
-                    color: '#0A0A0A',
-                    fontFamily: colors.fontMedium,
-                    fontSize: 12,
-                  }}>
-                  6 mins Away
-                </Text>
-              </View>
-              <View
-                style={{
-                  height: 1,
-                  backgroundColor: '#D9D9D9',
-                  width: '90%',
-                  alignSelf: 'center',
-                }}></View>
-
-              <View
-                style={{
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                  width: '90%',
-                  alignSelf: 'center',
-                  alignItems: 'center',
-                  marginVertical: '2%',
-                }}>
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    marginBottom: '3%',
-                  }}>
-                  <Image source={Prof} />
-                  <View style={{marginLeft: 10}}>
-                    <Text
-                      style={{
-                        color: '#0A0A0A',
-                        fontFamily: colors.fontSemiBold,
-                        fontSize: 18,
-                      }}>
-                      Mark Smith
-                    </Text>
-                    <Text
-                      style={{
-                        color: '#0A0A0A',
-                        fontFamily: colors.fontRegular,
-                        fontSize: 12,
-                      }}>
-                      Cash Payment
-                    </Text>
-                  </View>
-                </View>
-
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                  }}>
-                  <View
-                    style={{
-                      borderColor: '#D9D9D9',
-                      borderWidth: 1,
-                      padding: 10,
-                      borderRadius: 10,
-                    }}>
-                    <FontAwesome5
-                      name="phone-alt"
-                      size={20}
-                      color={'#545454'}
-                    />
-                  </View>
-                  <View
-                    style={{
-                      borderColor: '#D9D9D9',
-                      borderWidth: 1,
-                      padding: 10,
-                      borderRadius: 10,
-                      marginLeft: 10,
-                    }}>
-                    <AntDesign name="message1" size={20} color={'#545454'} />
-                  </View>
-                </View>
-              </View>
-              <View
-                style={{
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                  width: '75%',
-                  alignSelf: 'center',
-                  alignItems: 'center',
-                  marginVertical: '2%',
-                }}>
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                  }}>
-                  <MaterialIcons
-                    name="location-on"
-                    size={20}
-                    color={colors.black}
-                  />
-                  <Text
-                    style={{
-                      fontSize: 17,
-                      fontFamily: colors.fontRegular,
-                      color: colors.black,
-                      marginLeft: 5,
-                    }}>
-                    34 Km
-                  </Text>
-                </View>
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                  }}>
-                  <MaterialIcons
-                    name="access-time"
-                    size={20}
-                    color={colors.black}
-                  />
-                  <Text
-                    style={{
-                      fontSize: 17,
-                      fontFamily: colors.fontRegular,
-                      color: colors.black,
-                      marginLeft: 5,
-                    }}>
-                    1h30m
-                  </Text>
-                </View>
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                  }}>
-                  <FontAwesome6
-                    name="hand-holding-dollar"
-                    size={20}
-                    color={colors.black}
-                  />
-                  <Text
-                    style={{
-                      fontSize: 17,
-                      fontFamily: colors.fontRegular,
-                      color: colors.black,
-                      marginLeft: 5,
-                    }}>
-                    ₹289.00
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.container3}>
-                <View style={styles.locationRow2}>
-                  <TouchableOpacity>
-                    <FontAwesome5
-                      name="dot-circle"
-                      size={20}
-                      color={colors.primary}
-                    />
-                  </TouchableOpacity>
-                  <TextInput
-                    style={styles.textInput}
-                    // maxLength={50}
-                    numberOfLines={1}
-                    // value={initialLocation?.place_name}
-                    placeholder="Location..."
-                    placeholderTextColor="#B4BDC4"
-                    cursorColor={colors.black}
-                    // onChangeText={text => fetchLocations(text)}
-                  />
-                </View>
-
-                <View style={styles.divider}>
-                  <View style={styles.line} />
-                </View>
-
-                <View style={styles.locationRow2}>
-                  <FontAwesome5
-                    name="map-marker-alt"
-                    size={20}
-                    color="#299B56E5"
-                  />
-                  <TextInput
-                    style={styles.textInput}
-                    numberOfLines={1}
-                    // value={destinationLocation?.place_name}
-                    placeholder="Enter Destination"
-                    placeholderTextColor="#B4BDC4"
-                    cursorColor={colors.black}
-                    // onChangeText={text => fetchDestination(text)}
-                  />
-                </View>
-              </View>
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  alignSelf: 'center',
-                  justifyContent: 'space-between',
-                  width: '85%',
-                }}>
-                <View
-                  style={{
-                    width: '45%',
-                  }}>
-                  <YellowButton
-                    title="Decline"
-                    hideIcon={false}
-                    addStyle={{
-                      backgroundColor: '#F8F9FA',
-                      borderWidth: 1,
-                      borderColor: '#C9C2C2',
-                    }}
-                    // onPress={() => props.navigation.navigate('DashBoard')}
-                  />
-                </View>
-                <View
-                  style={{
-                    width: '45%',
-                  }}>
-                  <YellowButton
-                    title="Accept"
-                    hideIcon={false}
-                    onPress={() => props.navigation.navigate('CollectCash')}
-                  />
-                </View>
-              </View>
-            </View>
-          )}
+          </View>
         </BottomSheetView>
       </BottomSheet>
     </GestureHandlerRootView>
@@ -641,7 +556,7 @@ const styles = StyleSheet.create({
     flex: 1,
     marginHorizontal: 10,
     color: '#000000',
-    fontFamily: colors.fontBold,
+    fontFamily: colors.fontSemiBold,
     fontSize: 16,
   },
 });

@@ -10,7 +10,8 @@ import {
   Image,
   ScrollView,
 } from 'react-native';
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
+import {API_URL, DEV_URL} from '@env';
 import Icon from 'react-native-vector-icons/AntDesign';
 import Signup from '../../assets/images/EnterOTP.png';
 import Contact from '../../assets/images/contact.png';
@@ -18,9 +19,31 @@ import NavigationBackComponent from '../../components/NavigationBackComponent';
 import colors from '../../utils/globalColors';
 import YellowButton from '../../components/YellowButton';
 import paddingHelper from '../../utils/paddingHelper';
+import {showToast} from '../../modules/Toast';
+import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const OtpScreen = (props: any) => {
-  const [otp, setOtp] = useState(['', '', '', '']);
+  const otpgot = props.route.params;
+  console.log(otpgot);
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [customerId, setCustomerId] = useState('');
+
+  useEffect(() => {
+    if (props.route.params.data.otp) {
+      showToast(`Your Otp is  ${otpgot.data.otp}`, 'success', 17000);
+    }
+    const GetLocal = async () => {
+      let userData = await AsyncStorage.getItem('auth-token');
+      userData = JSON.parse(userData);
+      setCustomerId(userData);
+      console.log(customerId.user.id, 'dat');
+    };
+    GetLocal();
+    // const parseUserData = JSON.parse(userData);
+    // const customer_id = parseUserData.user.id;
+    // setCustomerId(customer_id);
+  }, []);
 
   const handleChangeText = (text: any, index: any) => {
     const newOtp = [...otp];
@@ -39,6 +62,30 @@ const OtpScreen = (props: any) => {
     }
   };
 
+  const handleOTPSubmit = async text => {
+    try {
+      console.log(customerId, 'iddd');
+      const otpString = otp.join('');
+      const response = await axios.post(`${API_URL}/api/auth/verify-otp`, {
+        phone: otpgot.phone,
+        userId: customerId?.user?.id,
+        userType: 'Driver',
+        otp: otpString,
+      });
+
+      console.log(response);
+
+      if (response.status === 200) {
+        showToast('OTP verified successfully!', 'success');
+        props.navigation.navigate('StartAuth');
+      } else {
+        showToast('Failed to verify OTP', 'error');
+      }
+    } catch (error) {
+      console.error('An error occurred while verifying OTP', error);
+      showToast('An error occurred while verifying OTP', 'error');
+    }
+  };
   const inputRefs = [];
 
   return (
@@ -64,10 +111,7 @@ const OtpScreen = (props: any) => {
           ))}
         </View>
 
-        <YellowButton
-          title="Verify"
-          onPress={() => props.navigation.navigate('StartAuth')}
-        />
+        <YellowButton title="Verify" onPress={handleOTPSubmit} />
       </View>
     </View>
   );

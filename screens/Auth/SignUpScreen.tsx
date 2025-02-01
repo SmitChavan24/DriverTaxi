@@ -32,8 +32,8 @@ const SignUpScreen = (props: any) => {
 
   const handleUserCreation = async (userId: any) => {
     try {
-      const endpoint = '/api/customers/customer-profile';
-      const idField = 'customer_id';
+      const endpoint = `${API_URL}/api/drivers/driver-profile`;
+      const idField = 'driver_id';
 
       // to ensure player ID is fetched before storing
       // const newPlayerId = await getPlayerId();
@@ -103,7 +103,11 @@ const SignUpScreen = (props: any) => {
         await handleUserCreation(response.data.user.id);
       }
       showToast('Sign Up successful', 'success');
-      props.navigation.navigate('LoginScreen', {email: data.email});
+      props.navigation.navigate('LoginScreen', {
+        email: data.email,
+        password: data.password,
+      });
+
       console.log(response, 'Got this');
 
       // toast.success(`${isSignUp ? 'Sign Up' : 'Log In'} successful!`);
@@ -145,7 +149,7 @@ const SignUpScreen = (props: any) => {
             value={data.email}
             placeholder="Type your email here"
             placeholderTextColor="#9D9393"
-            cursorColor="transparent"
+            cursorColor="black"
             onChangeText={text => onChange('email', text)}
             // keyboardType="phone-pad"
           />
@@ -165,7 +169,7 @@ const SignUpScreen = (props: any) => {
             secureTextEntry={watch}
             placeholder="Type your password here"
             placeholderTextColor="#9D9393"
-            cursorColor="transparent"
+            cursorColor="black"
             // keyboardType="phone-pad"
             onChangeText={text => onChange('password', text)}
           />
