@@ -38,7 +38,7 @@ const index = ({updatedRequests, handleDeclineRequest, handleAccept}) => {
               <Image source={require('../../assets/images/prof.png')} />
               <View style={styles.customerTextContainer}>
                 <Text style={styles.customerName}>
-                  {request?.customer?.name || 'Mark Smith'}
+                  {request?.customer?.name || ''}
                 </Text>
                 <Text style={styles.paymentMethod}>Cash Payment</Text>
               </View>

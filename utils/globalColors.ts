@@ -7,7 +7,7 @@ const colors = {
   black: '#000000',
   grey: '#9D9393',
   grey2: '#545454',
-  //   grayLight: '#DDDDDD',
+  grayLight: '#DDDDDD',
   //   primary: '#00094a',
   //   secondary: '#000',
   white: '#FFFFFF',

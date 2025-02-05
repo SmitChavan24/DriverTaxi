@@ -28,6 +28,7 @@ const HomeScreen = (props: any) => {
         make every ride a fantastic experience for our passengers. Let's hit the
         road together!"
       </Text>
+      {/* DashBoard */}
       <TouchableOpacity
         style={styles.button}
         onPress={() => props.navigation.navigate('DashBoard')}>

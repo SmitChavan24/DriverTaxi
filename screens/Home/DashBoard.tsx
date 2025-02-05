@@ -30,10 +30,19 @@ import axios from 'axios';
 import {showToast} from '../../modules/Toast';
 import getDistanceAndETA from '../../utils/distanceCalculation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+} from 'react-native-reanimated';
+import OtpModal from '../../modules/OtpModal';
 
 const DashBoard = (props: any) => {
   const [initialLocation, setInitialLocation] = useState('');
   const [destinationLocation, setDestinationLocation] = useState('');
+  const [moveToDestination, setMoveToDestination] = useState(false);
+  const [accepted, setAccepted] = useState(false);
+  const [arrivedDest, setArrivedDest] = useState(false);
   const [route, setRoute] = useState(null);
   const [toggle, setToggle] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -41,17 +50,27 @@ const DashBoard = (props: any) => {
   const [rideRequests, setRideRequests] = useState([]);
   const [updatedRequests, setUpdatedRequests] = useState([]);
   const [customerData, setCustomerData] = useState([]);
-  const [dailyFares, setDailyFares] = useState({});
-  const [prebookings, setPrebookings] = useState({});
-  const [showPrebookings, setShowPrebookings] = useState(false);
-  const snapPoints = useMemo(() => ['17%', '50%']);
+  const [otpmvisible, setOtpmvisible] = useState(false);
+  // const snapPoints = useMemo(() => ['17%', '50%']);
+  const [tripData, setTripData] = useState(null);
   const [time, settime] = useState(false);
   const inputs = useRef([]);
   const bottomSheetRef = useRef<BottomSheet>(null);
-  const handleSheetChanges = useCallback((index: number) => {
-    console.log('handleSheetChanges', index);
-    // console.log(initialLocation, 'it');
+  // const snapPoints = ['25%', '50%', '75%']; // Define your snap points
+  const snapPoints = useMemo(() => ['25%', '50%', '75%'], []);
+  // Track bottom sheet height
+  const bottomSheetHeight = useSharedValue(200); // Default height
+
+  // Update height dynamically when BottomSheet changes
+  const handleSheetChanges = useCallback(index => {
+    const heightMap = [200, 350, 300]; // Example heights corresponding to snapPoints
+    bottomSheetHeight.value = withTiming(heightMap[index]); // Animate change
   }, []);
+
+  // Animated style for floating View
+  const floatingViewStyle = useAnimatedStyle(() => ({
+    bottom: bottomSheetHeight.value, // Adjust dynamically
+  }));
 
   useEffect(() => {
     if (rideRequests?.length) {
@@ -75,9 +94,42 @@ const DashBoard = (props: any) => {
   }, [rideRequests]);
 
   const handleDeclineRequest = requestId => {
+    // bottomSheetRef.current?.snapToIndex(0);
     setUpdatedRequests(prevRequests =>
       prevRequests.filter(request => request.trip_id !== requestId),
     );
+  };
+  const EndTrip = async () => {
+    const response = await axios.put(`${API_URL}/api/trips/complete-trip`, {
+      trip_id: tripData?.trip_id,
+      driver_id: driverId,
+    });
+    console.log(response);
+    if (response.status === 200) {
+      props.navigation.navigate('CollectCash', {tripData});
+    }
+  };
+  const getDirection = async data => {
+    console.log('first get direction', tripData);
+    const res = await fetch(
+      'https://api.mapbox.com/directions/v5/mapbox/driving/' +
+        tripData?.source_lng +
+        ',' +
+        tripData?.source_lat +
+        ';' +
+        tripData?.destination_lng +
+        ',' +
+        tripData?.destination_lat +
+        '?alternatives=true&geometries=geojson&language=en&overview=full&steps=true&access_token=pk.eyJ1IjoicGF3YW4tc2luZ2giLCJhIjoiY2x5OG04czlhMGs3MzJqczdqZTQxdzdkMCJ9.9hJYde5isDb9oy7qQbI62g',
+      {
+        headers: {
+          'Content-Type': 'application/json()',
+        },
+      },
+    );
+    const result = await res.json();
+
+    setRoute(result?.routes[0]?.geometry?.coordinates);
   };
 
   const handleFindRide = async () => {
@@ -85,6 +137,8 @@ const DashBoard = (props: any) => {
       showToast('Switch back to Online!');
       return;
     }
+    snapTo25Percent();
+    settime(false);
     setLoading(true);
     try {
       const uniqueId = Date.now();
@@ -98,7 +152,6 @@ const DashBoard = (props: any) => {
       driverId = JSON.parse(driverId);
       driverId = driverId?.user?.id;
       setDriverId(driverId);
-      console.log(driverId, 'driver_id', uniqueId);
       // Then, fetch the data
       const response = await axios.get(`${API_URL}/api/trips/ready-trips`, {
         params: {uniqueId, driverId},
@@ -125,31 +178,57 @@ const DashBoard = (props: any) => {
       setLoading(false);
     }
   };
-
+  const snapTo25Percent = () => {
+    bottomSheetRef.current?.snapToIndex(0); // Index 0 corresponds to '25%'
+  };
   const handleAccept = async trip => {
     setLoading(true);
-
-    console.log('request ', request);
+    settime(true);
+    // bottomSheetRef.current?.snapToIndex(0);
+    console.log('request ', trip, 'request ', driverId);
     try {
       const response = await axios.put(`${API_URL}/api/trips/accept-trip`, {
         trip_id: trip,
         driver_id: driverId,
       });
+
+      console.log('Trip accepted response:', response);
+
       if (response.status === 200) {
-      } else {
-        const res = await axios.post(`${API_URL}/api/trips/trip`, {
-          trip,
-        });
-        fetchDriverDetails(trip);
-        throw new Error('Failed to accept the trip');
+        setAccepted(true);
+        snapTo25Percent();
+        fetchTripDataWithDelay(trip);
+        // fetchDriverDetails(trip);
       }
     } catch (error) {
+      console.log('error ', error);
       showToast(error.message);
     } finally {
       setLoading(false);
     }
   };
+  const fetchTripDataWithDelay = trip => {
+    setTimeout(async () => {
+      try {
+        const res = await axios.post(`${API_URL}/api/trips/trip`, {
+          trip_id: trip,
+        });
 
+        if (res && res.data) {
+          console.log('Trip Data:', res.data);
+          setTripData(res.data);
+          // getDirection(res.data);
+        } else {
+          console.error(
+            'Trip data is missing required location properties:',
+            res,
+          );
+        }
+      } catch (error) {
+        console.error('Error fetching trip data:', error);
+      }
+    }, 1000);
+  };
   const fetchDriverDetails = async tripId => {
     try {
       const response = await axios.post(
@@ -167,30 +246,6 @@ const DashBoard = (props: any) => {
     }
   };
 
-  const validateOTP = async otpString => {
-    console.log('Entered OTP: ', otpString.trim());
-    console.log(tripId);
-    setLoading(true);
-
-    try {
-      console.log('Calling verify otp');
-      const response = await axios.post(`${API_URL}/api/trips/validate-otp`, {
-        trip_id: tripId,
-        otp: otpString,
-      });
-
-      if (response.data.success) {
-        showToast('OTP VERIFIED');
-      }
-    } catch (error) {
-      showToast(error.response?.data?.error || 'Failed to validate OTP');
-      // Clear OTP inputs on error
-      setOtp(['', '', '', '']);
-      inputs.current[0].focus();
-    } finally {
-      setLoading(false);
-    }
-  };
   return (
     <GestureHandlerRootView style={[styles.container]}>
       <StatusBar hidden={true} />
@@ -208,31 +263,31 @@ const DashBoard = (props: any) => {
           right: 0,
           bottom: 0,
         }}>
-        {initialLocation?.geometry?.coordinates && (
+        {tripData?.source_lat && (
           <Mapbox.Camera
             zoomLevel={15}
-            centerCoordinate={initialLocation?.geometry?.coordinates}
+            centerCoordinate={[tripData?.source_lng, tripData?.source_lat]}
             animationMode="flyTo"
             animationDuration={2000}
           />
         )}
 
-        {initialLocation?.geometry?.coordinates && (
+        {tripData?.source_lat && (
           <Mapbox.PointAnnotation
             id="pointAnnotation"
             coordinate={
-              initialLocation?.geometry?.coordinates
-                ? initialLocation?.geometry?.coordinates
+              tripData?.source_lat
+                ? [tripData?.source_lng, tripData?.source_lat]
                 : [-5, 55]
             }
           />
         )}
-        {destinationLocation?.geometry?.coordinates && (
+        {tripData?.destination_lat && (
           <Mapbox.PointAnnotation
             id="pointAnnotation"
             coordinate={
-              destinationLocation?.geometry?.coordinates
-                ? destinationLocation?.geometry?.coordinates
+              tripData?.destination_lat
+                ? [tripData?.destination_lng, tripData?.destination_lat]
                 : [-5, 55]
             }
           />
@@ -258,6 +313,7 @@ const DashBoard = (props: any) => {
           </Mapbox.ShapeSource>
         )}
       </Mapbox.MapView>
+
       <View style={styles.container2}>
         <View style={styles.locationRow}>
           <TouchableOpacity onPress={() => console.log('first')}>
@@ -360,53 +416,55 @@ const DashBoard = (props: any) => {
         </View>
       </View>
 
-      <View
-        style={{
-          backgroundColor: '#F8F9FA',
-          borderWidth: 3,
-          borderColor: '#CECDCD',
-          borderRadius: 100,
-          padding: 30,
-          // paddingHorizontal: 50,
-          marginTop: '25%',
-          alignSelf: 'center',
-        }}>
-        <FontAwesome5
-          name={!time ? 'search' : 'hourglass-start'}
-          size={!time ? 50 : 23}
-          color={'#777777'}
-          style={{alignSelf: 'center'}}
-        />
-        {!time && (
-          <View style={{marginHorizontal: '6%'}}>
-            <Text
-              style={{
-                alignSelf: 'center',
-                textAlign: 'center',
-                color: '#777777',
-                marginTop: 5,
-                backgroundColor: '#F8F9FA',
-                fontFamily: colors.fontMedium,
-                fontSize: 22,
-              }}>
-              32
-            </Text>
-            <Text
-              style={{
-                alignSelf: 'center',
-                textAlign: 'center',
-                color: '#777777',
-                // marginTop: 5,
-                backgroundColor: '#F8F9FA',
-                fontFamily: colors.fontMedium,
-                fontSize: 14,
-              }}>
-              Seconds
-            </Text>
-          </View>
-        )}
-      </View>
-      {time && (
+      {loading && (
+        <View
+          style={{
+            backgroundColor: '#F8F9FA',
+            borderWidth: 3,
+            borderColor: '#CECDCD',
+            borderRadius: 100,
+            padding: 30,
+            // paddingHorizontal: 50,
+            marginTop: '25%',
+            alignSelf: 'center',
+          }}>
+          <FontAwesome5
+            name={!time ? 'search' : 'hourglass-start'}
+            size={!time ? 50 : 23}
+            color={'#777777'}
+            style={{alignSelf: 'center'}}
+          />
+          {time && (
+            <View style={{marginHorizontal: '6%'}}>
+              <Text
+                style={{
+                  alignSelf: 'center',
+                  textAlign: 'center',
+                  color: '#777777',
+                  marginTop: 5,
+                  backgroundColor: '#F8F9FA',
+                  fontFamily: colors.fontMedium,
+                  fontSize: 22,
+                }}>
+                32
+              </Text>
+              <Text
+                style={{
+                  alignSelf: 'center',
+                  textAlign: 'center',
+                  color: '#777777',
+                  // marginTop: 5,
+                  backgroundColor: '#F8F9FA',
+                  fontFamily: colors.fontMedium,
+                  fontSize: 14,
+                }}>
+                Seconds
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
+      {!time && loading && (
         <View>
           <Text
             style={{
@@ -433,11 +491,51 @@ const DashBoard = (props: any) => {
           </Text>
         </View>
       )}
+      {tripData && (!route || moveToDestination) && (
+        <Animated.View
+          style={[
+            {
+              width: '90%',
+              alignSelf: 'center',
+              position: 'absolute',
+              padding: 20,
+              borderRadius: 10,
+              backgroundColor: 'white',
+              elevation: 1,
+              zIndex: 99,
+            },
+            floatingViewStyle,
+          ]}>
+          <Text
+            style={{
+              color: colors.black,
+              fontFamily: colors.fontMedium,
+              fontSize: 14,
+              textAlign: 'center',
+            }}>
+            {tripData?.end_location}
+          </Text>
+        </Animated.View>
+      )}
+      {}
+      <View>
+        <OtpModal
+          visible={otpmvisible}
+          tripdata={tripData}
+          onPress={() => {
+            console.log('first is this called');
+            snapTo25Percent();
+            setMoveToDestination(true);
+            setOtpmvisible(!otpmvisible);
+          }}
+        />
+      </View>
       <BottomSheet
         // detached
         ref={bottomSheetRef}
         index={1}
         snapPoints={snapPoints}
+        onChange={handleSheetChanges}
         style={[
           {
             backgroundColor: colors.white,
@@ -467,18 +565,92 @@ const DashBoard = (props: any) => {
         onChange={handleSheetChanges}>
         <BottomSheetView style={{padding: 0}}>
           <View style={{}}>
-            <RideRequests
-              updatedRequests={updatedRequests}
-              handleAccept={handleAccept}
-              handleDeclineRequest={handleDeclineRequest}
-            />
+            {!tripData && !loading && !accepted && (
+              <RideRequests
+                updatedRequests={updatedRequests}
+                handleAccept={handleAccept}
+                handleDeclineRequest={handleDeclineRequest}
+              />
+            )}
 
-            <YellowButton
-              title="Find Ride"
-              hideIcon={false}
-              addStyle={{marginHorizontal: '10%', marginBottom: '10%'}}
-              onPress={handleFindRide}
-            />
+            {!tripData && !accepted && (
+              <YellowButton
+                title="Find Ride"
+                disabled={loading}
+                hideIcon={false}
+                addStyle={{marginHorizontal: '10%', marginBottom: '10%'}}
+                onPress={handleFindRide}
+              />
+            )}
+
+            {tripData && !route && (
+              <YellowButton
+                title="Navigate To Customer Location"
+                hideIcon={false}
+                addStyle={{marginHorizontal: '10%', marginBottom: '10%'}}
+                onPress={getDirection}
+              />
+            )}
+            {route && (!moveToDestination || arrivedDest) && (
+              <View>
+                <AntDesign
+                  name="checkcircle"
+                  color={colors.primary}
+                  size={70}
+                  style={{marginVertical: 10, alignSelf: 'center'}}
+                />
+                <Text
+                  style={{
+                    color: colors.black,
+                    fontFamily: colors.fontMedium,
+                    fontSize: 16,
+                    textAlign: 'center',
+                  }}>
+                  {arrivedDest
+                    ? 'Arrived At Destination'
+                    : 'Arrived At Customer Location'}
+                </Text>
+                <Text
+                  style={{
+                    color: colors.black,
+                    fontFamily: colors.fontMedium,
+                    fontSize: 16,
+                    textAlign: 'center',
+                    width: '80%',
+                    alignSelf: 'center',
+                    marginVertical: 10,
+                  }}>
+                  {tripData?.end_location}
+                </Text>
+
+                {arrivedDest ? (
+                  <YellowButton
+                    title="Collect Cash"
+                    hideIcon={false}
+                    addStyle={{marginHorizontal: '10%', marginBottom: '10%'}}
+                    onPress={EndTrip}
+                  />
+                ) : (
+                  <YellowButton
+                    title="Ask for OTP"
+                    hideIcon={false}
+                    addStyle={{marginHorizontal: '10%', marginBottom: '10%'}}
+                    onPress={() => setOtpmvisible(!otpmvisible)}
+                  />
+                )}
+              </View>
+            )}
+            {moveToDestination && (
+              <YellowButton
+                title="Navigate To Destination"
+                hideIcon={false}
+                addStyle={{marginHorizontal: '10%', marginBottom: '10%'}}
+                onPress={() => {
+                  setMoveToDestination(false);
+                  setArrivedDest(true);
+                }}
+              />
+            )}
           </View>
         </BottomSheetView>
       </BottomSheet>

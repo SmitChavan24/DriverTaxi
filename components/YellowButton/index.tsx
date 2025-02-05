@@ -7,9 +7,16 @@ import shadowProp from '../../utils/shadowProp';
 type Props = {onPress: () => void; title: string};
 
 const YellowButton = (props: Props) => {
-  const {onPress, title = '', addStyle, hideIcon = true} = props;
+  const {
+    onPress,
+    title = '',
+    addStyle,
+    hideIcon = true,
+    disabled = false,
+  } = props;
   return (
     <TouchableOpacity
+      disabled={disabled}
       style={[styles.buttonStyle, addStyle, shadowProp(2)]}
       onPress={() => onPress()}>
       <Text style={[styles.buttonLabel, props.color]}>{title}</Text>

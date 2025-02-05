@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import React, {useCallback, useMemo, useRef} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import Prof from '../../assets/images/prof.png';
 import paddingHelper from '../../utils/paddingHelper';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
@@ -15,13 +15,35 @@ import BottomSheet, {BottomSheetView} from '@gorhom/bottom-sheet';
 import NavigationBackComponent from '../../components/NavigationBackComponent';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import colors from '../../utils/globalColors';
+import {API_URL, DEV_URL} from '@env';
 import Pay from '../../assets/images/CashPayment.png';
 import shadowProp from '../../utils/shadowProp';
 import YellowButton from '../../components/YellowButton';
+import axios from 'axios';
 
 const CollectCash = (props: any) => {
-  const snapPoints = useMemo(() => ['17%', '50%']);
+  const tripData = props?.route?.params?.tripData;
+  console.log(tripData);
   const bottomSheetRef = useRef<BottomSheet>(null);
+  const [dataFromTrip, setDataFromTrip] = useState(null);
+
+  const snapPoints = useMemo(() => ['17%', '50%']);
+
+  useEffect(() => {
+    const fetchTripData = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/api/trips/end-trip-info`, {
+          headers: {tripId: tripData?.trip_id, isCustomer: false},
+        });
+        console.log(response);
+        setDataFromTrip(response.data);
+      } catch (error) {
+        console.error('Failed to fetch trip data:', error);
+      }
+    };
+
+    fetchTripData();
+  }, [tripData]);
 
   const handleSheetChanges = useCallback((index: number) => {
     console.log('handleSheetChanges', index);
@@ -59,9 +81,11 @@ const CollectCash = (props: any) => {
             </TouchableOpacity>
             <TextInput
               style={styles.textInput}
+              editable={false}
+              selection={{start: 0}}
               // maxLength={50}
               numberOfLines={1}
-              // value={initialLocation?.place_name}
+              value={tripData?.start_location}
               placeholder="Location..."
               placeholderTextColor="#B4BDC4"
               cursorColor={colors.black}
@@ -78,7 +102,9 @@ const CollectCash = (props: any) => {
             <TextInput
               style={styles.textInput}
               numberOfLines={1}
-              // value={destinationLocation?.place_name}
+              editable={false}
+              selection={{start: 0}}
+              value={tripData?.end_location}
               placeholder="Enter Destination"
               placeholderTextColor="#B4BDC4"
               cursorColor={colors.black}
@@ -110,7 +136,7 @@ const CollectCash = (props: any) => {
               fontSize: 14,
               color: colors.black,
             }}>
-            8.04 km
+            {dataFromTrip?.distance}
           </Text>
         </View>
         <View
@@ -136,7 +162,7 @@ const CollectCash = (props: any) => {
               fontSize: 14,
               color: colors.black,
             }}>
-            27 mins
+            {dataFromTrip?.duration}
           </Text>
         </View>
 
@@ -164,7 +190,7 @@ const CollectCash = (props: any) => {
                 fontSize: 18,
                 marginLeft: 5,
               }}>
-              Mark Smith
+              {dataFromTrip?.customerName}
             </Text>
           </View>
           <Text
@@ -204,7 +230,7 @@ const CollectCash = (props: any) => {
               fontFamily: colors.fontBold,
               fontSize: 14,
             }}>
-            ₹289.00
+            ₹{dataFromTrip?.fare}
           </Text>
         </View>
       </View>
@@ -243,7 +269,7 @@ const CollectCash = (props: any) => {
             title="Collected Cash"
             addStyle={{marginHorizontal: '5%'}}
             hideIcon={false}
-            onPress={() => props.navigation.navigate('CollectCash')}
+            onPress={() => props.navigation.navigate('DashBoard')}
           />
         </BottomSheetView>
       </BottomSheet>
