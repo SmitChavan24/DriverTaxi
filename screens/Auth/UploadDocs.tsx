@@ -25,12 +25,35 @@ import paddingHelper from '../../utils/paddingHelper';
 import Dropdown from '../../modules/DropDown';
 import {showToast} from '../../modules/Toast';
 import axios from 'axios';
+import SuccessModal from '../../modules/SuccessModal';
 
 const UploadDocs = (props: any) => {
   const [files, setFiles] = useState([]);
+  const [showModal, setShowModal] = useState(false);
   const [fileError, setFileError] = useState('');
-  const [showPopup, setShowPopup] = useState(false);
-  const [popupDetails, setPopupDetails] = useState({imageSrc: '', text: ''});
+  const [popupDetails, setPopupDetails] = useState([
+    {
+      name: 'Profile Picture',
+      imageSrc: require('../../assets/images/ProfileInt.png'),
+      text: 'Great job! Your profile is complete. Now, lets move on to secure your payments by adding your bank details.',
+    },
+    {
+      name: 'Bank Account Details',
+      imageSrc: require('../../assets/images/Creditcard.png'),
+      text: 'Awesome! Your bank details are all set.Next, lets make sure we have your driving details to eep you on the road safely.',
+    },
+    {
+      name: 'Driving License',
+      imageSrc: require('../../assets/images/drivings.png'),
+      text: 'Well done! Your driving details are updated. Finally, lets add your taxi information to complete your profile.',
+    },
+  ]);
+  let completed = [
+    ...(props?.route?.params?.params || []),
+    props?.route?.params?.data?.step,
+  ].filter(Boolean);
+
+  console.log('props', completed);
 
   const [auth, setAuth] = useState([
     {step: 'Profile picture'},
@@ -38,11 +61,43 @@ const UploadDocs = (props: any) => {
     {step: 'Driving Details'},
     {step: 'Taxi Details'},
   ]);
-  const terms = [
+  const Profterms = [
     {term: 'Please Upload a Clear Selfie'},
     {term: 'The Selfie Should have the applicants Face Alone'},
     {term: 'Upload PDF / JPEG / PNG'},
   ];
+  const Bankterms = [
+    {
+      term: 'Upload Bank Document (Passbook , Cancelled Cheque, Bank Statement, or Digital Account Screenshot)',
+    },
+    {term: 'Upload PDF / JPEG / PNG'},
+  ];
+  const Drivingterms = [
+    {term: 'Photocopies and printouts of documents will not be accepted'},
+    {
+      term: 'Only documents that are less than 10MB in size and in JPG, JPEG, PNG, or PDF format will beaccepted ',
+    },
+    {term: 'The photos and all details must be clearly visible'},
+  ];
+  const Taxiterms = [
+    {term: 'Photocopies and printouts of documents will not be accepted'},
+    {
+      term: 'Only documents that are less than 10MB in size and in JPG, JPEG, PNG, or PDF format will beaccepted ',
+    },
+    {term: 'The photos and all details must be clearly visible'},
+  ];
+
+  const termsMapping = {
+    'Profile Picture': Profterms,
+    'Bank Account Details': Bankterms,
+    'Driving License': Drivingterms,
+    'Taxi Details': Taxiterms,
+  };
+
+  const selectedTerms = termsMapping[props?.route?.params?.data?.step] || [];
+  const selectedPopupDetail = popupDetails.find(
+    item => item.name === props?.route?.params?.data?.step,
+  );
   const [pickedFile, setPickedFile] = useState(null);
 
   const getMaxFiles = title => {
@@ -99,7 +154,7 @@ const UploadDocs = (props: any) => {
     try {
       const results = await DocumentPicker.pick({
         allowMultiSelection: true, // Enable multi-selection
-        type: [DocumentPicker.types.images],
+        type: [DocumentPicker.types.images, DocumentPicker.types.allFiles],
       });
 
       if (results.length !== 3) {
@@ -255,11 +310,11 @@ const UploadDocs = (props: any) => {
   return (
     <View style={[styles.container]}>
       <StatusBar hidden={true} />
-      <NavigationBackComponent onPress={() => props.navigation.goBack()} />
+      {/* <NavigationBackComponent onPress={() => props.navigation.goBack()} /> */}
 
-      <View style={{width: '80%', alignSelf: 'center'}}>
-        <Text style={styles.text}>Profile Picture</Text>
-        {terms.map((data, index) => (
+      <View style={{width: '80%', alignSelf: 'center', marginTop: '20%'}}>
+        <Text style={styles.text}>{props?.route?.params?.data?.step}</Text>
+        {selectedTerms.map((data, index) => (
           <View
             style={{
               flexDirection: 'row',
@@ -279,7 +334,10 @@ const UploadDocs = (props: any) => {
             marginVertical: 10,
           }}
         />
-        <Text style={styles.textt}>Profile Picture</Text>
+        <Text
+          style={
+            styles.textt
+          }>{`Attach ${props?.route?.params?.data?.step}`}</Text>
 
         <TouchableOpacity style={styles.upload} onPress={pickDocuments}>
           <Image source={Contact} style={{marginRight: 10}}></Image>
@@ -393,9 +451,26 @@ const UploadDocs = (props: any) => {
             </View>
           ))}
         </View>
+        <SuccessModal
+          visible={showModal}
+          modalPress={() => {
+            setShowModal(!showModal);
+            props.navigation.navigate('CompleteAuth', {
+              completed,
+            });
+          }}
+          popupDetail={selectedPopupDetail} // Pass the selected popup details
+        />
         <YellowButton
-          title="Next"
-          onPress={() => props.navigation.navigate('Submitted')}
+          title="Continue"
+          // onPress={() => props.navigation.navigate('Submitted')}
+          onPress={() => {
+            if (props?.route?.params?.data?.step === 'Taxi Details') {
+              props.navigation.navigate('Submitted');
+            } else {
+              setShowModal(!showModal);
+            }
+          }}
         />
       </View>
     </View>

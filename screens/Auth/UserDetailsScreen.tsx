@@ -128,7 +128,8 @@ const UserDetailsScreen = (props: any) => {
       });
       console.log(response.status, 'Upload Basic');
       if (response.status === 200) {
-        props.navigation.navigate('UploadDocs');
+        props.navigation.navigate('CompleteAuth');
+        showToast('Profile Details Uploaded');
       }
       // onButtonClick(response); // Trigger the parent function on success
     } catch (error) {

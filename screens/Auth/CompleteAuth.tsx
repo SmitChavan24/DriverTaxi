@@ -20,11 +20,13 @@ import paddingHelper from '../../utils/paddingHelper';
 import Dropdown from '../../modules/DropDown';
 
 const CompleteAuth = (props: any) => {
+  const params = props?.route?.params?.completed;
+  console.log(props?.route?.params?.completed);
   const [selectedGender, setSelectedGender] = useState('Male');
   const [auth, setAuth] = useState([
-    {step: 'Profile picture'},
+    {step: 'Profile Picture'},
     {step: 'Bank Account Details'},
-    {step: 'Driving Details'},
+    {step: 'Driving License'},
     {step: 'Taxi Details'},
   ]);
 
@@ -37,16 +39,39 @@ const CompleteAuth = (props: any) => {
         <Text style={styles.text}>Welcome! , Mark</Text>
 
         <Text style={styles.textt}>Require Steps</Text>
-        {auth.map((data, index) => (
-          <TouchableOpacity style={styles.box} key={index}>
-            <Text style={{fontSize: 14, fontFamily: colors.fontMedium}}>
-              {data.step}
-            </Text>
-            <Icon name="keyboard-arrow-right" color={'#9D9393'} size={35} />
-          </TouchableOpacity>
-        ))}
+        {auth
+          .filter(data => !params?.includes(data.step))
+          .map((data, index) => (
+            <TouchableOpacity
+              style={styles.box}
+              key={index}
+              onPress={() =>
+                props.navigation.navigate('UploadDocs', {data, index, params})
+              }>
+              <Text style={{fontSize: 14, fontFamily: colors.fontMedium}}>
+                {data.step}
+              </Text>
+              <Icon name="keyboard-arrow-right" color={'#9D9393'} size={35} />
+            </TouchableOpacity>
+          ))}
 
         <Text style={styles.textt}>Submitted Steps</Text>
+        {auth
+          .filter(data => params?.includes(data.step))
+          .map((data, index) => (
+            <TouchableOpacity
+              style={styles.box}
+              key={index}
+              disabled={true}
+              onPress={() =>
+                props.navigation.navigate('UploadDocs', {data, index})
+              }>
+              <Text style={{fontSize: 14, fontFamily: colors.fontMedium}}>
+                {data.step}
+              </Text>
+              <Icon name="check-circle-outline" color={'#9D9'} size={30} />
+            </TouchableOpacity>
+          ))}
         <YellowButton
           title="Next"
           onPress={() => props.navigation.navigate('UploadDocs')}
