@@ -15,7 +15,8 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import Icon2 from 'react-native-vector-icons/AntDesign';
 import NavigationBackComponent from '../../components/NavigationBackComponent';
 import colors from '../../utils/globalColors';
-import {NEXT_PUBLIC_X_RAPIDAPI_KEY} from '@env';
+import {Picker} from '@react-native-picker/picker';
+import {NEXT_PUBLIC_X_RAPIDAPI_KEY, API_URL, DEV_URL} from '@env';
 import YellowButton from '../../components/YellowButton';
 import paddingHelper from '../../utils/paddingHelper';
 import Dropdown from '../../modules/DropDown';
@@ -46,7 +47,7 @@ const UserDetailsScreen = (props: any) => {
 
   const validateForm = () => {
     let isValid = true;
-
+    console.log(name, gender, city, typeOfModel);
     // Name validation
     if (!name) {
       showToast('Name is required.');
@@ -82,6 +83,7 @@ const UserDetailsScreen = (props: any) => {
   };
 
   const fetchCitySuggestions = async input => {
+    console.log(input);
     if (input.length < 2) {
       setCitySuggestions([]);
       return;
@@ -117,22 +119,21 @@ const UserDetailsScreen = (props: any) => {
       let userData = await AsyncStorage.getItem('auth-token');
       userData = JSON.parse(userData);
       console.log(userData.user.id, 'driver_id');
-      const response = await axios.put('/api/drivers/upload-basic', {
-        driver_id: userData,
+      const response = await axios.put(`${DEV_URL}/api/drivers/upload-basic`, {
+        driver_id: userData?.user?.id,
         name,
         gender,
         city,
         ride_type: typeOfModel,
       });
-      console.log(response, 'Upload Basic');
+      console.log(response.status, 'Upload Basic');
+      if (response.status === 200) {
+        props.navigation.navigate('UploadDocs');
+      }
       // onButtonClick(response); // Trigger the parent function on success
     } catch (error) {
       console.error('Error in API call:', error);
     }
-  };
-
-  const handleSubmit = () => {
-    performApiCall();
   };
 
   return (
@@ -155,6 +156,7 @@ const UserDetailsScreen = (props: any) => {
             placeholderTextColor="#9D9393"
             cursorColor="transparent"
             // keyboardType="phone-pad"
+            onChangeText={text => setName(text)}
           />
         </View>
         <Text style={styles.textt}>Gender</Text>
@@ -168,14 +170,62 @@ const UserDetailsScreen = (props: any) => {
             </TouchableOpacity>
           ))}
         </View>
-        <Text style={styles.textt}>City You Drive In</Text>
-        <Dropdown />
+        <Text style={styles.textt}>Select a Vehicle</Text>
         <View
+          style={{
+            borderColor: colors.black,
+            borderWidth: 1,
+            borderRadius: 1,
+            width: '100%',
+            alignSelf: 'center',
+          }}>
+          <Picker
+            selectedValue={typeOfModel}
+            style={{
+              color: colors.black,
+              fontFamily: colors.fontSemiBold,
+              paddingVertical: 3,
+              backgroundColor: colors.white,
+            }}
+            selectionColor={colors.black}
+            mode={'dropdown'}
+            prompt="Select One"
+            itemStyle={{
+              backgroundColor: colors.white,
+              fontFamily: colors.fontSemiBold,
+            }}
+            dropdownIconColor={colors.black}
+            onValueChange={itemValue => setTypeOfModel(itemValue)}>
+            <Picker.Item
+              label="Select a Vehicle"
+              value=""
+              color={colors.grey}
+            />
+            {carModelOptions.map((item, index) => (
+              <Picker.Item
+                label={`${item}`}
+                value={`${item}`}
+                color={colors.white}
+                fontFamily={colors.fontSemiBold}
+              />
+            ))}
+          </Picker>
+        </View>
+
+        <Text style={styles.textt}>City You Drive In</Text>
+        <Dropdown
+          onPress={fetchCitySuggestions}
+          city={citySuggestions}
+          onSelect={text => setCity(text)}
+          textinput={true}
+        />
+        <TouchableOpacity
           style={{
             flexDirection: 'row',
             borderRadius: 20,
             marginBottom: '2%',
-          }}>
+          }}
+          onPress={() => setAgreed(!agreed)}>
           <Icon2
             name="checkcircleo"
             color={colors.blue}
@@ -185,11 +235,8 @@ const UserDetailsScreen = (props: any) => {
           <Text style={styles.text2}>
             By Accept , you agree to Company Term’s & Conditions
           </Text>
-        </View>
-        <YellowButton
-          title="Next"
-          onPress={() => props.navigation.navigate('CompleteAuth')}
-        />
+        </TouchableOpacity>
+        <YellowButton title="Next" onPress={performApiCall} />
       </View>
     </View>
   );

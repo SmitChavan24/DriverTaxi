@@ -1,37 +1,68 @@
-import {FlatList, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {
+  FlatList,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import colors from '../utils/globalColors';
 import Icon2 from 'react-native-vector-icons/Feather';
 import paddingHelper from '../utils/paddingHelper';
 import {useState} from 'react';
 
-const Dropdown = ({
-  options = ['Mumbai', 'Pune', 'Banglore'],
-  placeholder = 'Search Your City Here',
-}: any) => {
+const Dropdown = (props: any) => {
+  console.log(props, props.city);
   const [isOpen, setIsOpen] = useState(false);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
-
+  const placeholder = 'Search Your City Here';
   const toggleDropdown = () => setIsOpen(!isOpen);
 
   const handleSelect = (option: string) => {
     setSelectedOption(option);
+    props.onSelect(option);
     setIsOpen(false);
   };
 
   return (
     <View style={styles.inputContainer2}>
-      <TouchableOpacity style={styles.dropdownHeader} onPress={toggleDropdown}>
-        <Text style={styles.textInput2}>{selectedOption || placeholder}</Text>
-        <Icon2
-          name={isOpen ? 'chevron-up' : 'chevron-down'}
-          size={20}
-          color="#505050"
-        />
-      </TouchableOpacity>
+      {!props.textinput && (
+        <TouchableOpacity
+          style={styles.dropdownHeader}
+          onPress={toggleDropdown}>
+          <Text style={styles.textInput2}>{selectedOption || placeholder}</Text>
+          <Icon2
+            name={isOpen ? 'chevron-up' : 'chevron-down'}
+            size={20}
+            color="#505050"
+          />
+        </TouchableOpacity>
+      )}
+      {props.textinput && (
+        <View style={styles.dropdownHeader}>
+          <TextInput
+            style={styles.textInput}
+            placeholder={placeholder}
+            value={selectedOption}
+            placeholderTextColor="#505050"
+            onChangeText={text => {
+              props.onPress(text);
+              setSelectedOption(text);
+            }}
+            onPressIn={toggleDropdown} // Opens dropdown on press
+          />
+          <Icon2
+            name={isOpen ? 'chevron-up' : 'chevron-down'}
+            size={20}
+            color="#505050"
+            // style={styles.icon}
+          />
+        </View>
+      )}
       {isOpen && (
         <View style={styles.dropdownList}>
           <FlatList
-            data={options}
+            data={props.city}
             keyExtractor={(item, index) => `${item}-${index}`}
             renderItem={({item}) => (
               <TouchableOpacity
@@ -59,7 +90,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.black,
     borderRadius: 1,
-    paddingVertical: 20,
+    paddingVertical: 10,
     paddingHorizontal: 10,
     width: '100%',
     marginBottom: '10%',
@@ -112,6 +143,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 5,
     fontFamily: colors.fontRegular,
     color: colors.black,
+    // height: 10,
     fontSize: 14,
   },
   textb: {
