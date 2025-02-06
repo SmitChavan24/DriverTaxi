@@ -100,7 +100,7 @@ const DashBoard = (props: any) => {
     );
   };
   const EndTrip = async () => {
-    const response = await axios.put(`${API_URL}/api/trips/complete-trip`, {
+    const response = await axios.put(`${DEV_URL}/api/trips/complete-trip`, {
       trip_id: tripData?.trip_id,
       driver_id: driverId,
     });
@@ -144,7 +144,7 @@ const DashBoard = (props: any) => {
       const uniqueId = Date.now();
 
       // First, revalidate the tag
-      const res = await axios.get(`${API_URL}api/revalidate`, {
+      const res = await axios.get(`${DEV_URL}api/revalidate`, {
         params: {tag: 'ready-trips'},
       });
       // console.log(API_URL, 'whta ', res);
@@ -153,7 +153,7 @@ const DashBoard = (props: any) => {
       driverId = driverId?.user?.id;
       setDriverId(driverId);
       // Then, fetch the data
-      const response = await axios.get(`${API_URL}/api/trips/ready-trips`, {
+      const response = await axios.get(`${DEV_URL}/api/trips/ready-trips`, {
         params: {uniqueId, driverId},
         headers: {
           'Cache-Control':
@@ -187,7 +187,7 @@ const DashBoard = (props: any) => {
     // bottomSheetRef.current?.snapToIndex(0);
     console.log('request ', trip, 'request ', driverId);
     try {
-      const response = await axios.put(`${API_URL}/api/trips/accept-trip`, {
+      const response = await axios.put(`${DEV_URL}/api/trips/accept-trip`, {
         trip_id: trip,
         driver_id: driverId,
       });
@@ -210,7 +210,7 @@ const DashBoard = (props: any) => {
   const fetchTripDataWithDelay = trip => {
     setTimeout(async () => {
       try {
-        const res = await axios.post(`${API_URL}/api/trips/trip`, {
+        const res = await axios.post(`${DEV_URL}/api/trips/trip`, {
           trip_id: trip,
         });
 
