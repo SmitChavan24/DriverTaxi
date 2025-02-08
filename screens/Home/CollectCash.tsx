@@ -32,7 +32,7 @@ const CollectCash = (props: any) => {
   useEffect(() => {
     const fetchTripData = async () => {
       try {
-        const response = await axios.get(`${DEV_URL}/api/trips/end-trip-info`, {
+        const response = await axios.get(`${API_URL}/api/trips/end-trip-info`, {
           headers: {tripId: tripData?.trip_id, isCustomer: false},
         });
         console.log(response);

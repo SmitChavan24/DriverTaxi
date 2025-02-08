@@ -26,6 +26,7 @@ import Dropdown from '../../modules/DropDown';
 import {showToast} from '../../modules/Toast';
 import axios from 'axios';
 import SuccessModal from '../../modules/SuccessModal';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const UploadDocs = (props: any) => {
   const [files, setFiles] = useState([]);
@@ -52,8 +53,6 @@ const UploadDocs = (props: any) => {
     ...(props?.route?.params?.params || []),
     props?.route?.params?.data?.step,
   ].filter(Boolean);
-
-  console.log('props', completed);
 
   const [auth, setAuth] = useState([
     {step: 'Profile picture'},
@@ -114,8 +113,6 @@ const UploadDocs = (props: any) => {
     }
   };
 
-  const maxFiles = getMaxFiles(auth);
-
   const pickDocument = async () => {
     const FILE_MAX_SIZE = 2 * 1024 * 1024; // 2 MB
     try {
@@ -156,9 +153,14 @@ const UploadDocs = (props: any) => {
         allowMultiSelection: true, // Enable multi-selection
         type: [DocumentPicker.types.images, DocumentPicker.types.allFiles],
       });
-
-      if (results.length !== 3) {
-        Alert.alert('Selection Limit', 'You can have to select 3 files.');
+      const maxFiles = getMaxFiles(props?.route?.params?.data?.step);
+      const existingFiles = pickedFile ?? [];
+      const totalFiles = existingFiles.length + results.length;
+      console.log(maxFiles, 'max files');
+      if (totalFiles !== maxFiles) {
+        showToast(
+          `You need to select exactly ${maxFiles} files. Currently selected: ${totalFiles}.`,
+        );
         return;
       }
 
@@ -170,9 +172,9 @@ const UploadDocs = (props: any) => {
           'Some files exceed the 2 MB limit and were not added.',
         );
       }
-
+      const finalFiles = [...existingFiles, ...validFiles];
       // Update state with the selected files
-      setPickedFile(validFiles); // Assuming pickedFiles is an array state
+      setPickedFile(finalFiles); // Assuming pickedFiles is an array state
     } catch (err) {
       if (DocumentPicker.isCancel(err)) {
         console.log('Document picker cancelled by user');
@@ -187,72 +189,70 @@ const UploadDocs = (props: any) => {
     );
   };
 
-  const performApiCall = async (title, files, driverId) => {
-    console.log(`Perform API call with ${files.length} files`);
+  const performApiCall = async title => {
+    console.log(`Perform API call with ${pickedFile.length} files`);
+    let driverId = await AsyncStorage.getItem('auth-token');
+    driverId = JSON.parse(driverId);
+    driverId = driverId?.user?.id;
 
+    const maxFiles = getMaxFiles(props?.route?.params?.data?.step);
     // Check if the number of uploaded files matches the required number
-    if (files.length < maxFiles) {
-      setFileError(`You must upload ${maxFiles} file(s) for ${title}.`);
+    if (pickedFile.length < maxFiles) {
+      showToast(`You must upload ${maxFiles} file(s) for ${title}.`);
+      // setPickedFile([]);
       return {status: 404};
     }
 
     try {
       const formData = new FormData();
       let apiEndpoint;
-
+      console.log(pickedFile, 'pickedFile');
       switch (title) {
         case 'Profile Picture':
-          apiEndpoint = '/api/drivers/upload-profile';
-          formData.append('profile_pic', files[0]);
+          apiEndpoint = 'api/drivers/upload-profile';
+          formData.append('profile_pic', pickedFile[0]);
           formData.append('driverId', driverId);
-          setPopupDetails({
-            imageSrc: '/driver/profilePopup.PNG',
-            text: "Great job! Your profile is complete. Now, let's move on to secure your payments by adding your bank details.",
-          });
+          console.log(formData, 'data');
           break;
         case 'Bank Account Details':
-          apiEndpoint = '/api/drivers/upload-bank-details';
-          formData.append('bank-document', files[0]);
+          apiEndpoint = 'api/drivers/upload-bank-details';
+          formData.append('bank-document', pickedFile[0]);
           formData.append('driverId', driverId);
-          setPopupDetails({
-            imageSrc: '/driver/bankPopup.PNG',
-            text: "Awesome! Your bank details are all set. Next, let's make sure we have your driving details to keep you on the road safely.",
-          });
+
           break;
         case 'Driving License':
-          apiEndpoint = '/api/drivers/upload-driving-license';
-          formData.append('license_front', files[0]);
-          formData.append('license_back', files[1]);
+          apiEndpoint = 'api/drivers/upload-driving-license';
+          formData.append('license_front', pickedFile[0]);
+          formData.append('license_back', pickedFile[1]);
           formData.append('driverId', driverId);
-          setPopupDetails({
-            imageSrc: '/driver/drivingLicensePopup.PNG',
-            text: "Well done! Your driving details are updated. Finally, let's add your taxi information to complete your profile.",
-          });
+
           break;
         case 'Taxi Details':
-          apiEndpoint = '/api/drivers/upload-taxi-images';
-          formData.append('photo_front', files[0]);
-          formData.append('photo_back', files[1]);
-          formData.append('photo_inside', files[2]);
+          apiEndpoint = 'api/drivers/upload-taxi-images';
+          formData.append('photo_front', pickedFile[0]);
+          formData.append('photo_back', pickedFile[1]);
+          formData.append('photo_inside', pickedFile[2]);
           formData.append('driverId', driverId);
           break;
         default:
-          throw new Error('Invalid upload type');
+          showToast('Invalid upload type');
       }
-
-      const response = await axios.put(`${API_URL}${apiEndpoint}`, formData, {
+      console.log(`${DEV_URL}${apiEndpoint}`);
+      const response = await axios.put(`${DEV_URL}${apiEndpoint}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
 
       if (response.status === 200) {
-        showToast('Uploaded successfully');
-        setShowPopup(true);
-        setTimeout(() => {
-          setShowPopup(false);
-        }, 3000);
-        setFiles([]);
+        showToast('Uploaded successfully', 'success');
+        if (props?.route?.params?.data?.step === 'Taxi Details') {
+          props.navigation.navigate('CompleteAuth', {completed});
+        } else {
+          setShowModal(!showModal);
+        }
+        setTimeout(() => {}, 1000);
+        setPickedFile([]);
       }
       console.log(
         `Returning with ${response?.status} status & data`,
@@ -261,7 +261,7 @@ const UploadDocs = (props: any) => {
 
       return {status: response?.status, data: response?.data};
     } catch (error) {
-      setFileError('Uploading failed, try again...');
+      showToast('Uploading failed, try again...');
       console.error(`Error uploading ${title}:`, error);
       showToast(`Error uploading ${title}: ${error.message}`);
       return {
@@ -464,13 +464,7 @@ const UploadDocs = (props: any) => {
         <YellowButton
           title="Continue"
           // onPress={() => props.navigation.navigate('Submitted')}
-          onPress={() => {
-            if (props?.route?.params?.data?.step === 'Taxi Details') {
-              props.navigation.navigate('CompleteAuth', {completed});
-            } else {
-              setShowModal(!showModal);
-            }
-          }}
+          onPress={() => performApiCall(props?.route?.params?.data?.step)}
         />
       </View>
     </View>

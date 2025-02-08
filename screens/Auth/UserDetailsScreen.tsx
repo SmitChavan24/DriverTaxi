@@ -119,7 +119,7 @@ const UserDetailsScreen = (props: any) => {
       let userData = await AsyncStorage.getItem('auth-token');
       userData = JSON.parse(userData);
       console.log(userData.user.id, 'driver_id');
-      const response = await axios.put(`${DEV_URL}/api/drivers/upload-basic`, {
+      const response = await axios.put(`${API_URL}/api/drivers/upload-basic`, {
         driver_id: userData?.user?.id,
         name,
         gender,
