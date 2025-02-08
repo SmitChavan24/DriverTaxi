@@ -255,18 +255,18 @@ const UploadDocs = (props: any) => {
         setFiles([]);
       }
       console.log(
-        `Returning with ${response.status} status & data`,
+        `Returning with ${response?.status} status & data`,
         response.data,
       );
 
-      return {status: response.status, data: response.data};
+      return {status: response?.status, data: response?.data};
     } catch (error) {
       setFileError('Uploading failed, try again...');
       console.error(`Error uploading ${title}:`, error);
       showToast(`Error uploading ${title}: ${error.message}`);
       return {
-        status: error.response ? error.response.status : 500,
-        error: error.message,
+        status: error?.response ? error?.response?.status : 500,
+        error: error?.message,
       };
     }
   };
@@ -466,7 +466,7 @@ const UploadDocs = (props: any) => {
           // onPress={() => props.navigation.navigate('Submitted')}
           onPress={() => {
             if (props?.route?.params?.data?.step === 'Taxi Details') {
-              props.navigation.navigate('Submitted');
+              props.navigation.navigate('CompleteAuth', {completed});
             } else {
               setShowModal(!showModal);
             }

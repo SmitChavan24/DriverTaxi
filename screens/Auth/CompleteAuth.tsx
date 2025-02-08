@@ -74,7 +74,17 @@ const CompleteAuth = (props: any) => {
           ))}
         <YellowButton
           title="Next"
-          onPress={() => props.navigation.navigate('UploadDocs')}
+          onPress={() => {
+            const completedDocs = props?.route?.params?.completed ?? [];
+
+            console.log('Completed Docs:', completedDocs);
+
+            if (completedDocs.length === 4) {
+              props.navigation.navigate('Submitted');
+            } else {
+              props.navigation.navigate('UploadDocs');
+            }
+          }}
         />
       </View>
     </View>
