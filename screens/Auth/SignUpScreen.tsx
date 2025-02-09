@@ -103,7 +103,7 @@ const SignUpScreen = (props: any) => {
         await handleUserCreation(response.data.user.id);
       }
       showToast('Sign Up successful', 'success');
-      props.navigation.navigate('LoginScreen', {
+      props.navigation.navigate('PhoneVerify', {
         email: data.email,
         password: data.password,
       });
@@ -202,7 +202,11 @@ const SignUpScreen = (props: any) => {
             marginBottom: '2%',
             //   marginLeft: '20%',
           }}>
-          <Icon name="checkcircleo" color={colors.blue} size={15} />
+          <Icon
+            name={isChecked ? 'checkcircle' : 'checkcircleo'}
+            color={colors.blue}
+            size={15}
+          />
           <Text style={styles.text}>Agree to Terms & Conditions</Text>
         </TouchableOpacity>
         <YellowButton

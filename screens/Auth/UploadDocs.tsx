@@ -237,8 +237,8 @@ const UploadDocs = (props: any) => {
         default:
           showToast('Invalid upload type');
       }
-      console.log(`${DEV_URL}${apiEndpoint}`);
-      const response = await axios.put(`${DEV_URL}${apiEndpoint}`, formData, {
+
+      const response = await axios.put(`${API_URL}${apiEndpoint}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },

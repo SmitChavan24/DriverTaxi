@@ -370,7 +370,7 @@ const DashBoard = (props: any) => {
                 fontFamily: colors.fontBold,
                 fontSize: 12,
               }}>
-              9
+              0
             </Text>
           </View>
         </View>
@@ -410,7 +410,7 @@ const DashBoard = (props: any) => {
                 fontFamily: colors.fontBold,
                 fontSize: 10,
               }}>
-              ₹1400.00
+              ₹00.00
             </Text>
           </View>
         </View>

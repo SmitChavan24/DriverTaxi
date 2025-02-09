@@ -26,23 +26,52 @@ import {showToast} from '../../modules/Toast';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const PhoneVerify = (props: any) => {
-  const RegEmail = props.route.params.user.id;
-  console.log(RegEmail, 'draiiai');
+  const RegEmail = props.route.params?.email;
+  const RegPass = props.route.params?.password;
   const [phone, setPhone] = useState('');
   const [isChecked, setIsChecked] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [error, setError] = useState('');
+  const [UserData, setUserData] = useState(null);
   const {user, signUp, logIn, signInWithOAuth} = useAuth();
   const [watch, setWatch] = useState(true);
 
   useEffect(() => {
     const GetLocal = async () => {
       const userData = await AsyncStorage.getItem('auth-token');
-
       console.log(userData, 'session');
-      // setCustomerId(userData);
     };
     GetLocal();
+
+    const HandleSignUp = async () => {
+      console.log(RegEmail, RegPass);
+      const response = await logIn(RegEmail, RegPass);
+
+      if (response?.data?.user?.id) {
+        try {
+          const endpoint = `${API_URL}/api/drivers/driver-profile`;
+          const idField = 'driver_id';
+
+          const payload = {
+            [idField]: response.data.user.id,
+            email: RegEmail,
+            password: RegEmail,
+          };
+
+          const responsee = await axios.post(endpoint, payload);
+          console.log(`Created ${responsee ? 'driver' : 'customer'} profile`);
+
+          setUserData(response.data);
+          // props.navigation.navigate('PhoneVerify', response.data);
+        } catch (error) {
+          // console.error("Error creating user profile:", error);
+          showToast('Failed to create user profile');
+        }
+      }
+    };
+    if (RegEmail && RegPass) {
+      HandleSignUp();
+    }
     // const parseUserData = JSON.parse(userData);
     // const customer_id = parseUserData.user.id;
     // setCustomerId(customer_id);
@@ -56,25 +85,26 @@ const PhoneVerify = (props: any) => {
       return;
     }
     // props.navigation.navigate('VerifyScreen');
-
-    try {
-      const response = await axios.post(`${API_URL}/api/auth/send-otp`, {
-        userId: RegEmail,
-        userType: 'Driver',
-      });
-      console.log(response.data.otp);
-      if (response.status === 200) {
-        // setOtpSent(true);
-        // setIsOtpValid(true); // Mark OTP as valid
-        setCountdown(60); // Start the countdown
-        showToast('Successfully sent OTP to your email!');
-        props.navigation.navigate('OtpScreen', {data: response.data, phone});
-      } else {
-        showToast(`Failed to send OTP: ${response.data.error}`);
+    if (UserData?.user?.id) {
+      try {
+        const response = await axios.post(`${API_URL}/api/auth/send-otp`, {
+          userId: UserData?.user?.id,
+          userType: 'Driver',
+        });
+        console.log(response.data.otp);
+        if (response.status === 200) {
+          // setOtpSent(true);
+          // setIsOtpValid(true); // Mark OTP as valid
+          setCountdown(60); // Start the countdown
+          showToast('Successfully sent OTP to your email!');
+          props.navigation.navigate('OtpScreen', {data: response.data, phone});
+        } else {
+          showToast(`Failed to send OTP: ${response.data.error}`);
+        }
+      } catch (error) {
+        console.error(error);
+        showToast('An error occurred while sending OTP');
       }
-    } catch (error) {
-      console.error(error);
-      showToast('An error occurred while sending OTP');
     }
   };
 
@@ -108,7 +138,7 @@ const PhoneVerify = (props: any) => {
             // keyboardType="phone-pad"
           />
         </View>
-        <TouchableOpacity
+        {/* <TouchableOpacity
           style={{
             flexDirection: 'row',
             alignItems: 'center',
@@ -118,7 +148,7 @@ const PhoneVerify = (props: any) => {
           onPress={() => setIsChecked(!isChecked)}>
           <Icon name="checkcircleo" color={colors.blue} size={15} />
           <Text style={styles.text}>Remember Me</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
         <YellowButton title="Sign In" onPress={handleSendOtp} />
         {/* <Text style={styles.textf}>
           Don’t have an account?

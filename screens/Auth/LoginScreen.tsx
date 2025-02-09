@@ -37,44 +37,6 @@ const LoginScreen = (props: any) => {
   const {user, signUp, logIn, signInWithOAuth} = useAuth();
   const [watch, setWatch] = useState(true);
 
-  useEffect(() => {
-    const GetLocal = async () => {
-      const userData = await AsyncStorage.getItem('auth-token');
-      console.log(userData);
-    };
-    GetLocal();
-
-    const HandleSignUp = async () => {
-      console.log(RegEmail, RegPass);
-      const response = await logIn(RegEmail, RegPass);
-
-      if (response?.data?.user?.id) {
-        try {
-          const endpoint = `${API_URL}/api/drivers/driver-profile`;
-          const idField = 'driver_id';
-
-          const payload = {
-            [idField]: response.data.user.id,
-            email: RegEmail,
-            password: RegEmail,
-          };
-
-          const responsee = await axios.post(endpoint, payload);
-          console.log(`Created ${responsee ? 'driver' : 'customer'} profile`);
-          props.navigation.navigate('PhoneVerify', response.data);
-        } catch (error) {
-          // console.error("Error creating user profile:", error);
-          showToast('Failed to create user profile');
-        }
-      }
-    };
-    if (RegEmail && RegPass) {
-      HandleSignUp();
-    }
-    // const parseUserData = JSON.parse(userData);
-    // const customer_id = parseUserData.user.id;
-    // setCustomerId(customer_id);
-  }, []);
   const handleSubmit = async () => {
     // props.navigation.navigate('PhoneVerify');
     if (!isChecked) {
@@ -124,33 +86,7 @@ const LoginScreen = (props: any) => {
       // setLoading(false);
     }
   };
-  const handleSendOtp = async () => {
-    setError(''); // Clear previous error before new request
 
-    // if (phoneNumber.length !== 10) {
-    //   setError("Please enter a valid 10-digit phone number");
-    //   return;
-    // }
-
-    try {
-      const response = await axios.post(`${API_URL}/api/auth/send-otp`, {
-        userId: customerId,
-        userType: 'Customer',
-      });
-      console.log(response);
-      if (response.status === 200) {
-        // setOtpSent(true);
-        // setIsOtpValid(true); // Mark OTP as valid
-        setCountdown(60); // Start the countdown
-        showToast('Successfully sent OTP to your email!');
-      } else {
-        showToast(`Failed to send OTP: ${response.data.error}`);
-      }
-    } catch (error) {
-      console.error(error);
-      showToast('An error occurred while sending OTP');
-    }
-  };
   const onChange = (name: any, text: any) => {
     // if (name === 'password' && !watch) {
     //   console.log('2');
@@ -228,7 +164,11 @@ const LoginScreen = (props: any) => {
             //   marginLeft: '20%',
           }}
           onPress={() => setIsChecked(!isChecked)}>
-          <Icon name="checkcircleo" color={colors.blue} size={15} />
+          <Icon
+            name={isChecked ? 'checkcircle' : 'checkcircleo'}
+            color={colors.blue}
+            size={15}
+          />
           <Text style={styles.text}>Remember Me</Text>
         </TouchableOpacity>
         <YellowButton title="Sign In" onPress={handleSubmit} />
@@ -241,7 +181,7 @@ const LoginScreen = (props: any) => {
               fontFamily: colors.fontBold,
               textAlign: 'center',
             }}
-            onPress={() => console.log('first')}>
+            onPress={() => props.navigation.navigate('SignUpScreen')}>
             {' Sign up'}
           </Text>
         </Text>

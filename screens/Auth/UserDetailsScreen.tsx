@@ -224,11 +224,12 @@ const UserDetailsScreen = (props: any) => {
           style={{
             flexDirection: 'row',
             borderRadius: 20,
+            alignItems: 'center',
             marginBottom: '2%',
           }}
           onPress={() => setAgreed(!agreed)}>
           <Icon2
-            name="checkcircleo"
+            name={agreed ? 'checkcircle' : 'checkcircleo'}
             color={colors.blue}
             size={15}
             style={{marginTop: '1%'}}
